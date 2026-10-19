@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"mime"
+	"crypto/rand"
+	"encoding/base64"
 
 	"github.com/pippps/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -69,8 +71,14 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	if !found {
 		respondWithError(w, http.StatusInternalServerError, "media type parsing problem", fmt.Errorf("problem cutting type mime from subtype"))
 	}
-	
-	fileName := fmt.Sprintf("assets/%v.%s",videoID,tnExtension)
+	ran := make([]byte, 32)
+	_, err = rand.Read(ran)
+	if err != nil {
+		respondWithError(w,  http.StatusInternalServerError, "error uploading image", err)
+	}
+	ranB64 := base64.RawURLEncoding.EncodeToString(ran)
+
+	fileName := fmt.Sprintf("assets/%v.%s",ranB64,tnExtension)
 	
 	fileOS, err := os.Create(fileName)
 	if err != nil {
