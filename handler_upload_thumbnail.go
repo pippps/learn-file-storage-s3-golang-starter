@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"encoding/base64"
+	"os"
+	"strings"
+	"mime"
 
 	"github.com/pippps/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -47,18 +49,6 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 	defer file.Close()
 
-	mediaType := header.Header.Get("Content-Type")
-	if mediaType == "" {
-		respondWithError(w, http.StatusBadRequest, "Missing Content-Type for thumbnail", nil)
-		return
-	}
-
-	data, err := io.ReadAll(file)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't read file", err)
-		return
-	}
-
 	videoMD, err := cfg.db.GetVideo(videoID)
 	if err != nil {
 		respondWithError(w, http.StatusNotFound, "Couldn't find video", err)
@@ -69,7 +59,33 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	
-	tnURL := fmt.Sprintf("data:%s;base64,%s",mediaType,base64.StdEncoding.EncodeToString(data))
+	mediaType, _, err := mime.ParseMediaType(header.Header.Get("Content-Type"))
+	if err != nil || (mediaType != "image/jpeg" && mediaType != "image/png") {
+		respondWithError(w, http.StatusUnsupportedMediaType, "Unsupported media type", err)
+		return 
+	}
+	
+	tnExtension, found := strings.CutPrefix(mediaType, "image/")
+	if !found {
+		respondWithError(w, http.StatusInternalServerError, "media type parsing problem", fmt.Errorf("problem cutting type mime from subtype"))
+	}
+	
+	fileName := fmt.Sprintf("assets/%v.%s",videoID,tnExtension)
+	
+	fileOS, err := os.Create(fileName)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't upload image", err)
+		return 
+	}
+	defer fileOS.Close()
+
+	_, err = io.Copy(fileOS,file)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't upload image", err)
+		return
+	}
+	
+	tnURL := fmt.Sprintf("http://localhost:8091/%s",fileName)
 	videoMD.ThumbnailURL = &tnURL
 
 	err = cfg.db.UpdateVideo(videoMD)
