@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"encoding/base64"
 
 	"github.com/pippps/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -67,18 +68,12 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		respondWithError(w, http.StatusUnauthorized, "Not authorized to update this video", nil)
 		return
 	}
-
-	videoThumbnails[videoID] = thumbnail{
-		data:      data,
-		mediaType: mediaType,
-	}
-
-	thumbnailURL := fmt.Sprintf("http://localhost:%s/api/thumbnails/%s", cfg.port, videoID)
-	videoMD.ThumbnailURL = &thumbnailURL
+	
+	tnURL := fmt.Sprintf("data:%s;base64,%s",mediaType,base64.StdEncoding.EncodeToString(data))
+	videoMD.ThumbnailURL = &tnURL
 
 	err = cfg.db.UpdateVideo(videoMD)
 	if err != nil {
-		delete(videoThumbnails, videoID)
 		respondWithError(w, http.StatusInternalServerError, "Couldn't update video", err)
 		return
 	}
