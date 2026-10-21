@@ -75,6 +75,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	_, err = rand.Read(ran)
 	if err != nil {
 		respondWithError(w,  http.StatusInternalServerError, "error uploading image", err)
+		return 
 	}
 	ranB64 := base64.RawURLEncoding.EncodeToString(ran)
 
