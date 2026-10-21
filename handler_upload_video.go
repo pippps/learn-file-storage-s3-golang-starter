@@ -92,7 +92,8 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, http.StatusInternalServerError, "error creating s3 key for video", err)
 		return
 	}
-	key := hex.EncodeToString(ran)
+	ranHex := hex.EncodeToString(ran)
+	key := ranHex + ".mp4"
 
 	params := &s3.PutObjectInput{
 		Bucket:      &cfg.s3Bucket,
