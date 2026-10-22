@@ -85,6 +85,20 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, http.StatusInternalServerError, "internal error", err)
 		return
 	}
+	aspectRatio, err := getVideoAspectRatio(tempFile.Name())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "internal error", err)
+		return
+	}
+	var prefix string
+	switch(aspectRatio){
+		case "16:9":
+			prefix = "landscape"
+		case "9:16":
+			prefix = "portrait"
+		case "other":
+			prefix = aspectRatio		
+	}
 
 	ran := make([]byte, 32)
 	_, err = rand.Read(ran)
@@ -93,7 +107,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	ranHex := hex.EncodeToString(ran)
-	key := ranHex + ".mp4"
+	key := prefix + "/" + ranHex + ".mp4"
 
 	params := &s3.PutObjectInput{
 		Bucket:      &cfg.s3Bucket,
